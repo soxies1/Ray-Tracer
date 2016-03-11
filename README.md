@@ -2,6 +2,8 @@
 Assignment 1: Ray Tracer
 By: Tyson Bulmer
 
+![alt tag](https://github.com/soxies1/Ray-Tracer)
+
 Features Implemented:
 
 	- Mulitple Spheres
