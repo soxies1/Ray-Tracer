@@ -4,15 +4,15 @@
 class Light : public Object
 {
 public:
-    Light(vec3 location){
+    Light(Vector3 location){
         Point = location;
     }
 
-    virtual bool Intersect(vec3 Origin, vec3 Direction,
-                           float * t, vec3 * normal, vec3 * color, bool * reflective, bool * transparent)
+    virtual bool Intersect(Vector3 Origin, Vector3 Direction,
+                           float * t, Vector3 * normal, Vector3 * color)
     {
         return true;
     }
 
-    vec3 Point;
+    Vector3 Point;
 };
