@@ -2,7 +2,7 @@
 Assignment 2: Upgraded Ray Tracer
 By: Tyson Bulmer
 
-![Sample Image](https://github.com/soxies1/Ray-Tracer/blob/master/TracedImage.png)
+![alt tag](https://github.com/soxies1/Ray-Tracer)
 
 Features Implemented:
 
