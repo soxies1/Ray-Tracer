@@ -1,5 +1,5 @@
 #Ray Tracer
-Assignment 1: Ray Tracer
+Assignment 2: Upgraded Ray Tracer
 By: Tyson Bulmer
 
 ![Sample Image](https://github.com/soxies1/Ray-Tracer/blob/master/TracedImage.png)
@@ -7,8 +7,10 @@ By: Tyson Bulmer
 Features Implemented:
 
 	- Mulitple Spheres
-	- Box Enclosing Scene
-	- Anti-aliasing with 16 rays per pixel
+	- Box Made By Triangles Enclosing Scene 
+	- Anti-aliasing with 4 jittered rays per pixel
 	- Reflective Mirror Ball
+	- Refractive Ball
 	- Textured Surface
-	- Multiple light sources
+	- Area light sources
+	- Bounding Spheres

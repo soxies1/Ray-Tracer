@@ -1,16 +1,18 @@
 #pragma once
 #include "object.h"
 
-class Sphere : public Object
+class BoundingSphere : public Object
 {
 public:
-    Sphere(vec3 Center_in, float Radius_in, vec3 Color_in, bool is_Reflective, bool is_Transparent)
+    BoundingSphere()
+    {
+    }
+
+    BoundingSphere(vec3 Center_in, float Radius_in, std::vector<Object *> ObjectList_in)
     {
         Center = Center_in;
         Radius = Radius_in;
-        Color = Color_in;
-        Reflective = is_Reflective;
-        Transparent = is_Transparent;
+        ObjectList = ObjectList_in;
     }
 
     virtual bool Intersect(vec3 Origin, vec3 Direction,
@@ -31,13 +33,13 @@ public:
 
         if (t > 0) {
             *t_out = t;
-            vec3 IntersectionPoint = Direction * t;
-            IntersectionPoint = IntersectionPoint + Origin;
-            vec3 SurfaceNormal = IntersectionPoint - Center;
-            (*normal_out) = normalize(SurfaceNormal);
-            *color = Color;
-            *reflective = Reflective;
-            *transparent = Transparent;
+            //vec3 IntersectionPoint = Direction * t;
+            //IntersectionPoint = IntersectionPoint + Origin;
+            //vec3 SurfaceNormal = IntersectionPoint - Center;
+            //(*normal_out) = normalize(SurfaceNormal);
+            //*color = Color;
+            //*reflective = Reflective;
+            //*transparent = Transparent;
             return true;
         } else
         {
@@ -46,8 +48,7 @@ public:
     }
 
     vec3 Center;
-    vec3 Color;
     float Radius;
-    bool Reflective;
-    bool Transparent;
+    std::vector<Object *> ObjectList;
+
 };

@@ -27,13 +27,15 @@ std::vector<Light *> LightList;
 
 std::vector<AreaLight *> AreaLightList;
 
-std::vector<BoundingSphere *> BoundingList;
-
-std::vector<Object *> ObjectList2;
+BoundingSphere SphereBound;
 
 int refl_obj;
 
 vec3 BackgroundColor(0,0,0);
+
+float rand_table[16];
+
+bool optimize = true; //18 with optimize true, 21 with false
 
 //Compute Shading of Surface
 Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Intersection, vec3 Direction)
@@ -43,11 +45,14 @@ Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Inters
     vec3 final(0,0,0);
     int count=0;
     bool InShadow = false;
-    bool InShade[NUMLIGHTS] = { 0 };
+    //int siz = AreaLightList.size();
+    bool InShade[1] = { 0 };
+    float shade_coeff = 0.4;
 
 
     for(int i = 0; i < AreaLightList.size(); i++){
-        for(int h = 0; h < 1; h++){
+        //Soft Shadows
+        for(int h = 0; h < 16; h++){
 
             //Lambertain
             vec3 L = AreaLightList[i]->pointOnLight(h) - Intersection;
@@ -60,10 +65,11 @@ Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Inters
             vec3 H = L + Direction;
             H = normalize(H);
             float S_Max = MaxValue(0, dot(Normal,H));
-            float hold = S_Max;
-            for(int j = 0; j < PHONGPOWER; j++){
-                S_Max = S_Max * hold;
-            }
+            //float hold = S_Max;
+            S_Max = pow(S_Max, PHONGPOWER);
+            //for(int j = 0; j < PHONGPOWER; j++){
+            //    S_Max = S_Max * hold;
+            //}
 
             S_Max = S_Max * LightIntensity;
             OutColor = OutColor + (vec3(200,200,200) * S_Max);
@@ -77,6 +83,7 @@ Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Inters
             //float t_min = 999999;
             //bool HasIntersection = false;
             bool x,y;
+            x = y = false;
             //Intersect with the list of objects
             for (int k = 0; k < ObjectList.size() - 12; ++ k)
             {
@@ -88,14 +95,17 @@ Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Inters
                 {
                     InShade[i] = true;
                     InShadow = true;
+                    if(y){
+                        shade_coeff = .8f;
+                    }
                     //SetColor(px, MultiplyScalar(OutColor,.2));
                     break;
                 }
             }
 
             if(InShadow)
-            for(int l = 0; l < NUMLIGHTS; l++){
-                if(InShade[l]) MaxC = (MaxC * 0.4f);
+            for(int l = 0; l < AreaLightList.size(); l++){
+                if(InShade[l]) MaxC = (MaxC * shade_coeff);
             }
             final += MaxC;
             count++;
@@ -111,6 +121,23 @@ Pixel Shadeing(vec3 SurfaceColor, float LightIntensity, vec3 Normal, vec3 Inters
 
 bool in_refraction = false;
 
+bool spheres_added = false;
+
+void AddSpheres(){
+    if(spheres_added) return;
+    for(int i = 0; i < SphereBound.ObjectList.size(); i++){
+        ObjectList.insert(ObjectList.begin(),SphereBound.ObjectList[i]);
+    }
+    spheres_added = true;
+
+}
+
+void RemoveSpheres(){
+    if(!spheres_added) return;
+    ObjectList.erase(ObjectList.begin(),ObjectList.begin() + SphereBound.ObjectList.size());
+    spheres_added = false;
+}
+
 //Compute ray function solves intersect of objects from a point
 Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
     Pixel px;
@@ -124,6 +151,17 @@ Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
     int k;
     bool is_trans, is_reflec;
     is_trans = is_reflec = false;
+
+    //Bounding sphere
+    if(optimize){
+        float * trash;
+        vec3 trash1, trash2;
+        bool trash3,trash4;
+
+        if(SphereBound.Intersect(FromPoint, Direction,trash, &trash1, &trash2, &trash3, &trash4)){
+            AddSpheres();
+        }
+    }
 
     //Intersect with the list of objects
     for (k = 0; k < ObjectList.size(); ++ k)
@@ -149,7 +187,7 @@ Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
     }
     if (HasIntersection)
     {
-        if(obj_hit >= ObjectList2.size() - 2){
+        if(obj_hit >= ObjectList.size() - 2){
             SetColor(px, vec3(255,255,255));
             return px;
         }
@@ -157,7 +195,7 @@ Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
         Intersection = Intersection + FromPoint;
         px = Shadeing(color_min, LightIntensity, Normal_min, Intersection, Direction);
 
-        //If hit object is transparent
+        //If hit object is transparent/ refraction
         if(is_trans){
             vec3 N = Normal_min;
             vec3 D = Direction;
@@ -189,19 +227,9 @@ Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
                     vec3 N_Time = N * TwoD_Dot_N;
                     vec3 R = Direction - N_Time;
                     R = normalize(R);
-                    Pixel refl = ComputeRay(new_intersection, R, 0.00, j);
+                    Pixel refl = ComputeRay(new_intersection, R, 0.5f, j);
                     px = AddColors(refl,px);
                 }
-
-            /*else{
-                float TwoD_Dot_N = dot(Direction,N) * 2;
-                vec3 N_Time = N * TwoD_Dot_N;
-                vec3 R = Direction - N_Time;
-                R = normalize(R);
-                Pixel refl = ComputeRay(Intersection, R, 1.0, j);
-                px = AddColors(refl,px);
-            }*/
-
 
         }
 
@@ -230,6 +258,9 @@ Pixel ComputeRay(vec3 FromPoint, vec3 Direction, float LightIntensity, int j){
     else //No Intersection, set background colour
     {
         SetColor(px, BackgroundColor);
+    }
+    if(optimize){
+        RemoveSpheres();
     }
     return px;
 }
@@ -267,15 +298,30 @@ Pixel aliasedPixel(vec3 pixelPosition, vec3 Camera, float LightIntensity, int j)
     return AveragePixel(ComputeRay(Camera, Direction1, LightIntensity, j),ComputeRay(Camera, Direction2, LightIntensity, j),
                       ComputeRay(Camera, Direction3, LightIntensity, j),ComputeRay(Camera, Direction4, LightIntensity, j));
 
-    //return AveragePixel(ComputeRayBounded(Camera, Direction1, LightIntensity, j),ComputeRayBounded(Camera, Direction2, LightIntensity, j),
-    //                  ComputeRayBounded(Camera, Direction3, LightIntensity, j),ComputeRayBounded(Camera, Direction4, LightIntensity, j));
 }
 
+//Sphere coordinate transform with matrix
 void TransformSphere(Sphere * in){
     mat4 transform = translate(mat4(1.0f), vec3(200.0f,200.0f,200.0f));
 
     vec4 out = transform * vec4(in->Center, 1.0f);
     in->Center = vec3(out.x, out.y, out.z);
+}
+
+void initRandTable(){
+    for(int i = 0; i < 16; i++){
+        rand_table[i] = (float)( rand() % 100) / 100.0f;
+    }
+}
+
+float BoundCenter(vec3 a, vec3 b, vec3 c, vec3 * out){
+    vec3 hold((a.x+ b.x + c.x)/3,(a.y+ b.y + c.y)/3,(a.z+ b.z + c.z)/3);
+    float val = 0;
+    if(length(a-hold)>val) val = length(a-hold);
+    if(length(b-hold)>val) val = length(b-hold);
+    if(length(c-hold)>val) val = length(c-hold);
+    *out = hold;
+    return val + 81.0f;
 }
 
 void RayTraceImage(Image * pImage)
@@ -285,68 +331,37 @@ void RayTraceImage(Image * pImage)
     TransformSphere(&One);
     Sphere Two(vec3(0.0f,-160.0f,-80.0f), 40, vec3(1,56,75) ,false, false);
     TransformSphere(&Two);
-    Sphere Three(vec3(175.0f,-120.0f, 0.0f), 80, vec3(10,10,10),false, true);
+    Sphere Three(vec3(175.0f,-40.0f, 0.0f), 80, vec3(250,250,250),false, true);
     TransformSphere(&Three);
     //Sphere Four(vec3(200.0f,-150.0f,-40.0f), 50, vec3(80,186,168),false, false);
     //TransformSphere(&Four);
 
+    Cube cube(C_C,C_LBN, C_LBF, C_LTN, C_LTF, C_RTF, C_RBN, C_RBF, C_RTN, vec3(29,70, 100), false, false);
+
     //Add to object List
+
+    vec3 bound_center;
+    float bound_radius = BoundCenter(vec3(150.0f,80.0f,220.0f),vec3(200.0f,40.0f,120.0f),vec3(375.0f,160.0f, 200.0f), &bound_center);
+    std::vector<Object *> BoundList;
+    BoundList.push_back(&One);
+    BoundList.push_back(&Two);
+    BoundList.push_back(&Three);
+
+    SphereBound = BoundingSphere(bound_center, bound_radius,BoundList);
+
+    ObjectList.push_back(&cube);
+
+    if(!optimize){
     ObjectList.push_back(&One);
     ObjectList.push_back(&Two);
     ObjectList.push_back(&Three);
-
-    //Add cube
-
-    /*Triangle CBottom1(LBN*0.2f, LBF*0.2f, RBF*0.2f, vec3(0,1,0), vec3(252,251,250),false, false);
-    Triangle CBottom2(LBN*0.2f, RBN*0.2f, RBF*0.2f, vec3(0,1,0), vec3(252,251,250),false, false);
-
-    Triangle CLeft1(LBN*0.2f, LBF*0.2f, LTF*0.2f, vec3(1,0,0), vec3(136,141,147),false, false);
-    Triangle CLeft2(LBN*0.2f, LTN*0.2f, LTF*0.2f, vec3(1,0,0), vec3(136,141,147),false, false);
-
-    Triangle CRight1(RBN*0.2f, RBF*0.2f, RTF*0.2f, vec3(-1,0,0), vec3(213,77,48),false, false);
-    Triangle CRight2(RBN*0.2f, RTN*0.2f, RTF*0.2f, vec3(-1,0,0), vec3(213,77,48),false, false);
-
-//    Triangle Top1(vec3(0,512,0), vec3(0,512,512), vec3(512,512,512), vec3(0,-1,0), vec3(256,512,0), vec3(1,56,75),false, false);
-//    Triangle Top2(vec3(0,512,0), vec3(512,512,0), vec3(512,512,512), vec3(0,-1,0), vec3(256,512,0), vec3(1,56,75),false, false);
-
-    Triangle CTop1(RTN*0.2f, LTF*0.2f, RTF*0.2f, vec3(0,-1,0), vec3(10,10,10),false, false);
-    Triangle CTop2(LTN*0.2f, RTN*0.2f, RTF*0.2f, vec3(0,-1,0), vec3(10,10,10),false, false);
-*/
-    Triangle CBack1(vec3(300,50,250), vec3(350,50,150), vec3(350,100,150),vec3(0,0,1), vec3(136,141,147),false, false);
-    Triangle CBack2(vec3(300,50,250), vec3(300,100,150), vec3(350,100,150), vec3(0,0,1), vec3(136,141,147),false, false);
-
-    Triangle CFront1(vec3(300,50,200), vec3(350,50,100), vec3(350,100,100), vec3(0,0,-1), vec3(136,141,18),false, false);
-    Triangle CFront2(vec3(300,50,200), vec3(300,100,100), vec3(350,100,100), vec3(0,0,-1), vec3(136,141,18),false, false);
-
-//printf("Got here 0");
-    //Add Planes to object list
-    /*ObjectList.push_back(&CBottom1);
-    ObjectList.push_back(&CBottom2);
-    ObjectList.push_back(&CLeft1);
-    ObjectList.push_back(&CLeft2);
-    ObjectList.push_back(&CRight1);
-    ObjectList.push_back(&CRight2);
-    ObjectList.push_back(&CTop1);
-    ObjectList.push_back(&CTop2);*/
-    ObjectList.push_back(&CBack1);
-    ObjectList.push_back(&CBack2);
-    ObjectList.push_back(&CFront1);
-    ObjectList.push_back(&CFront2);
-
-    //ObjectList.push_back(&Four);
-
-
-    //Create and Push Lights
-    /*Light Light1(vec3(128,128,0));
-    LightList.push_back(&Light1);
-    Light Light2(vec3(210,256,0));
-    LightList.push_back(&Light2);*/
+    }
 
     AreaLight AreaLight1(L_RF, L_LN, L_RN);
-    AreaLight AreaLight2(L_LF, L_RF, L_LN);
+    //AreaLight AreaLight2(L_LF, L_RF, L_LN);
 
     AreaLightList.push_back(&AreaLight1);
-    AreaLightList.push_back(&AreaLight2);
+    //AreaLightList.push_back(&AreaLight2);
 
     //Define Camera Position
     vec3 Camera(256, 256, -300);
@@ -361,9 +376,6 @@ void RayTraceImage(Image * pImage)
 
     Triangle Right1(RBN, RBF, RTF, vec3(-1,0,0), vec3(213,77,48),false, false);
     Triangle Right2(RBN, RTN, RTF, vec3(-1,0,0), vec3(213,77,48),false, false);
-
-//    Triangle Top1(vec3(0,512,0), vec3(0,512,512), vec3(512,512,512), vec3(0,-1,0), vec3(256,512,0), vec3(1,56,75),false, false);
-//    Triangle Top2(vec3(0,512,0), vec3(512,512,0), vec3(512,512,512), vec3(0,-1,0), vec3(256,512,0), vec3(1,56,75),false, false);
 
     Triangle Top1(RTN, LTF, RTF, vec3(0,-1,0), vec3(10,10,10),false, false);
     Triangle Top2(LTN, RTN, RTF, vec3(0,-1,0), vec3(10,10,10),false, false);
@@ -390,14 +402,8 @@ void RayTraceImage(Image * pImage)
     ObjectList.push_back(&UpperLight1);
     ObjectList.push_back(&UpperLight2);
 
-
     srand(time(NULL));
-    //Make Random Object Reflective
-    /*
-    srand(time(NULL));
-    refl_obj = rand() % (ObjectList.size() - 1);
-    */
-
+    initRandTable();
 
     for (int i = 0; i < 512; ++ i)
         for (int j = 0; j < 512; ++j)
@@ -405,15 +411,10 @@ void RayTraceImage(Image * pImage)
             //Compute O +tD
             vec3 PixelPosition((float)i, (float)j, 0);
 
-            //vec3 Direction = Minus(PixelPosition, Camera);
-            //Direction = normalize(Direction);
-
             //For 4 rays per pixel anit-aliasing done
             //(*pImage)(i, 511-j) = AveragePixel(aliasedPixel(PixelPosition, Camera, LightIntensity, j),aliasedPixel(PixelPosition, Camera, LightIntensity, j),aliasedPixel(PixelPosition, Camera, LightIntensity, j),aliasedPixel(PixelPosition, Camera, LightIntensity, j));
             (*pImage)(i, 511-j) = aliasedPixel(PixelPosition, Camera, LightIntensity, j);
             //Pixel out = ComputeRay(PixelPosition, Direction, LightIntensity,j);
-
-            //(*pImage)(i, 511-j) = out;
 
         }//End 512x512 For loop
 

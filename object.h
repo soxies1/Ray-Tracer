@@ -4,7 +4,7 @@
 class Object
 {
 public:
-    virtual bool Intersect(Vector3 Origin, Vector3 Direction,
-                           float * t, Vector3 * normal, Vector3 * color) = 0;
+    virtual bool Intersect(vec3 Origin, vec3 Direction,
+                           float * t, vec3 * normal, vec3 * color, bool * reflective, bool * transparent) = 0;
 
 };
