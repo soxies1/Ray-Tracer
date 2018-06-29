@@ -2,7 +2,7 @@
 Assignment 1: Ray Tracer
 By: Tyson Bulmer
 
-![alt tag](https://github.com/soxies1/Ray-Tracer/blob/master/TracedImage.png)
+![alt tag](https://github.com/tysonbul/Ray-Tracer/blob/master/TracedImage.png)
 
 Features Implemented:
 
